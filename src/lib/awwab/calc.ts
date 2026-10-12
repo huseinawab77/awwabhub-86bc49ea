@@ -65,7 +65,8 @@ export function activityPerformance(a: Activity, period: Period, entries: Entrie
     case "daily_threshold": {
       const rec = vals.filter((e) => typeof e!.value === "number");
       if (!rec.length) return none(a.target);
-      const ok = rec.filter((e) => (e!.value as number) >= a.target).length;
+      // Proportional daily credit, capped at 1 per day (protein 50/120 = 0.417 day); surplus only feeds bonus.
+      const ok = a.target > 0 ? round1(rec.reduce((s, e) => s + Math.min(Math.max(e!.value as number, 0) / a.target, 1), 0) * 100) / 100 : 0;
       // Bonus: each day's capped bonus, averaged over eligible days (same denominator as performance).
       const dayBonus = rec.reduce((s, e) => s + quantityBonus(e!.value as number, a.target, a.bonus), 0);
       return finish(ok, dates.length, rec.length, a.target, dates.length ? round1(dayBonus / dates.length) : 0);

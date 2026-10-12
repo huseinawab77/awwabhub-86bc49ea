@@ -27,7 +27,7 @@ describe("incremental quantity logs", () => {
     expect(activityPerformance(ACTIVITY_BY_ID["protein"], day, e, after).performance).toBe(100);
     e = editLog(e, D, "protein", "b", 30, "t")!;
     expect(e[D]!["protein"]!.value).toBe(90);
-    expect(activityPerformance(ACTIVITY_BY_ID["protein"], day, e, after).performance).toBe(0);
+    expect(activityPerformance(ACTIVITY_BY_ID["protein"], day, e, after).performance).toBe(75);
     e = removeLog(e, D, "protein", "a", "t")!;
     expect(e[D]!["protein"]!.value).toBe(30);
     e = removeLog(e, D, "protein", "b", "t")!;
