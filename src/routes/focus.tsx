@@ -174,7 +174,7 @@ function InterruptedDialog({ session }: { session: FocusSession }) {
   const [open, setOpen] = useState(true);
   const finish = () => {
     const iso = new Date(end).toISOString();
-    if (!(Date.parse(iso) > Date.parse(session.startedAt))) return toast.error(L("Jam akhir harus setelah jam mulai", "End must be after start"));
+    if (!(Date.parse(iso) > Date.parse(session.startedAt))) { toast.error(L("Jam akhir harus setelah jam mulai", "End must be after start")); return; }
     finishFocus(session.id, iso);
   };
   return (
@@ -282,7 +282,7 @@ function EditSession({ s, session, cats, onClose }: { s: AppState; session: Focu
     const { categoryId, title, notes, goalId, projectId, milestoneId, plannerItemId } = f;
     if (session.status === "COMPLETED") {
       const ok = editFocusTimes(session.id, new Date(f.start).toISOString(), new Date(f.end).toISOString());
-      if (!ok) return toast.error(L("Jam akhir harus setelah jam mulai", "End must be after start"));
+      if (!ok) { toast.error(L("Jam akhir harus setelah jam mulai", "End must be after start")); return; }
     }
     updateFocusInfo(session.id, { categoryId, title, notes, goalId, projectId, milestoneId, plannerItemId });
     onClose();
