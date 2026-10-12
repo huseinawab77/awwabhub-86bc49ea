@@ -31,12 +31,30 @@ export function Notifier() {
       for (const o of activeOn(occurrencesIn(st.routines, st.routineExceptions, today, today), today))
         if (near(o.startTime)) fire(`rout|${o.key}|${o.startTime}`, o.title, `${id ? "Mulai" : "Starts"} ${o.startTime}`);
       const a = activeSession(st.focusSessions);
+      if (a && a.status === "RUNNING") {
+        const mins = Math.floor(sessionSeconds(a, Date.now()) / 60);
+        fireOnce(`focusstart|${a.id}`, id ? "Focus sedang berjalan" : "Focus timer running", (a.title || (id ? "Sesi fokus" : "Focus session")) + (cfg.focusMinutes ? ` · ${id ? "target" : "target"} ${cfg.focusMinutes}m` : ""), false);
+        // Lightweight progress pop-up every 5 minutes (replaces previous via same tag).
+        if (mins > 0 && mins % 5 === 0 && notifySupported() && Notification.permission === "granted" && document.hidden) {
+          try { new Notification(id ? "Focus berjalan" : "Focus running", { body: `${mins} ${id ? "menit" : "min"}`, tag: `focus-progress|${a.id}`, icon: "/favicon.svg", silent: true }); } catch { /* */ }
+        }
+      }
       if (cfg.focusMinutes && a && a.status === "RUNNING" && sessionSeconds(a, Date.now()) >= cfg.focusMinutes * 60)
         fire(`focus|${a.id}|${cfg.focusMinutes}`, id ? "Target fokus tercapai" : "Focus target reached", id ? `${cfg.focusMinutes} menit fokus selesai. Istirahat sejenak?` : `${cfg.focusMinutes} focused minutes done. Take a break?`);
     };
     tick();
     const t = setInterval(tick, 20_000);
-    return () => clearInterval(t);
+    // Live timer in the browser tab title while a focus session runs.
+    const base = document.title;
+    const title = setInterval(() => {
+      const a = activeSession(getState().focusSessions);
+      if (a) {
+        const sec = sessionSeconds(a, Date.now()), p = (n: number) => String(n).padStart(2, "0");
+        const clock = `${sec >= 3600 ? `${Math.floor(sec / 3600)}:` : ""}${p(Math.floor((sec % 3600) / 60))}:${p(sec % 60)}`;
+        document.title = `${a.status === "PAUSED" ? "⏸" : "⏱"} ${clock} · AWWAB`;
+      } else if (document.title.includes("· AWWAB")) document.title = base;
+    }, 1000);
+    return () => { clearInterval(t); clearInterval(title); document.title = base; };
   }, [id]);
   return null;
 }
