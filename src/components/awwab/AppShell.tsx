@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 
 const PUBLIC_PATHS = ["/auth", "/reset-password"];
 import { useEffect, useState, type ReactNode } from "react";
-import { BarChart3, CalendarCheck, CalendarDays, CalendarRange, Home, Lightbulb, NotebookPen, PenLine, Repeat, Settings, Target } from "lucide-react";
+import { BarChart3, CalendarCheck, CalendarDays, CalendarRange, Home, Lightbulb, NotebookPen, PenLine, Repeat, Settings, Target, Timer } from "lucide-react";
 import { useT } from "@/lib/awwab/i18n";
 import { LangSwitch } from "./ui";
 import { useAuthUser } from "@/lib/awwab/sync";
@@ -29,6 +29,7 @@ const NAV = [
   { to: "/home", key: "nav.home", icon: Home },
   { to: "/daily", key: "nav.daily", icon: PenLine },
   { to: "/planner", key: "nav.planner", icon: CalendarCheck },
+  { to: "/focus", key: "nav.focus", icon: Timer },
   { to: "/routines", key: "nav.routines", icon: Repeat },
   { to: "/weekly", key: "nav.weekly", icon: BarChart3 },
   { to: "/monthly", key: "nav.monthly", icon: CalendarRange },

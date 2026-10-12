@@ -1,3 +1,4 @@
+import { minutesForActivity } from "@/lib/awwab/focus";
 import { createFileRoute, Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, Minus, Pencil, Plus, Trash2 } from "lucide-react";
@@ -90,6 +91,7 @@ function ActivityRow({ a, date, entry }: { a: Activity; date: string; entry: Dai
         <p className="truncate font-semibold">{actName(a, t)}</p>
         <p className="text-xs text-muted-foreground">{targetText(a, t)}</p>
         {a.inputType === "checklist" && a.frequency !== "day" && <PeriodCount a={a} date={date} />}
+        <FocusHint activityId={a.id} date={date} />
       </div>
       {a.inputType === "checklist" ? <CheckboxActivity a={a} date={date} entry={entry} /> : <QuantityActivity a={a} date={date} entry={entry} />}
     </li>
@@ -233,4 +235,12 @@ function LogRow({ l, a, date, unit, onError, showDate }: { l: QuantityLog; a: Ac
       )}
     </li>
   );
+}
+
+/** Reference only: Focus Hub time for this activity. Never written into the entry or score. */
+function FocusHint({ activityId, date }: { activityId: string; date: string }) {
+  const s = useAppState();
+  const m = minutesForActivity(s.focusSessions, s.focusCategories, date, activityId);
+  if (!m) return null;
+  return <p className="text-xs font-semibold text-primary">Focus Hub: {m} min</p>;
 }

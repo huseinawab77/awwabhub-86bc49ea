@@ -1,6 +1,7 @@
 // Persistent local-storage abstraction. Raw user input only — never calculated values.
 import { useSyncExternalStore } from "react";
 import { addLog, editLog, removeLog } from "./quantity";
+import { defaultFocusCategories, activeSession, sessionSeconds, type FocusCategory, type FocusSession } from "./focus";
 import { isDomainId, latestVersion, systemHabits, type DomainId, type Frequency, type Habit, type HabitVersion, type InputType } from "./config";
 
 export interface DailyEntry {
@@ -164,10 +165,13 @@ export interface AppState {
    * which of the day's three openings (morning/afternoon/evening) was last seen. Never affects scores. */
   lastOpeningDate: string | null;
   lastOpeningSlot: number;
+  /** Focus Hub (reference only, never feeds scores). */
+  focusCategories: FocusCategory[];
+  focusSessions: FocusSession[];
 }
 
 const KEY = "awwab:v1";
-const EMPTY: AppState = { version: 1, entries: {}, goals: [], projects: [], milestones: [], reviews: [], habits: systemHabits(), plannerItems: [], routines: [], routineExceptions: [], lastOpeningDate: null, lastOpeningSlot: -1 };
+const EMPTY: AppState = { version: 1, entries: {}, goals: [], projects: [], milestones: [], reviews: [], habits: systemHabits(), plannerItems: [], routines: [], routineExceptions: [], lastOpeningDate: null, lastOpeningSlot: -1, focusCategories: defaultFocusCategories("2026-01-01T00:00:00.000Z"), focusSessions: [] };
 
 const arr = <X>(x: unknown): X[] => (Array.isArray(x) ? (x as X[]) : []);
 const validHabit = (h: Habit) => !!h && typeof h.id === "string" && Array.isArray(h.versions) && h.versions.length > 0 && h.versions.every((v) => isDomainId(v.domain));
@@ -193,6 +197,8 @@ function parseState(p: any): AppState {
     lastOpeningDate: typeof p?.lastOpeningDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.lastOpeningDate) ? p.lastOpeningDate : null,
     // States saved before the 3×-per-day change only had a date; treat that day as fully seen so nothing re-opens today.
     lastOpeningSlot: typeof p?.lastOpeningSlot === "number" && p.lastOpeningSlot >= -1 && p.lastOpeningSlot <= 2 ? p.lastOpeningSlot : (p?.lastOpeningDate ? 2 : -1),
+    focusCategories: Array.isArray(p?.focusCategories) ? arr<FocusCategory>(p.focusCategories).filter((c) => !!c && typeof c.id === "string") : defaultFocusCategories(new Date().toISOString()),
+    focusSessions: arr<FocusSession>(p?.focusSessions).filter((x) => !!x && typeof x.id === "string" && typeof x.startedAt === "string").map((x) => ({ ...x, pauses: arr(x.pauses) })),
   };
 }
 
@@ -209,7 +215,7 @@ function load() {
 
 /** True when the device holds any user-entered data. */
 export const hasLocalData = (s: AppState) =>
-  Object.keys(s.entries).length > 0 || s.goals.length > 0 || s.reviews.length > 0 || s.plannerItems.length > 0 || s.routines.length > 0 || s.habits.some((h) => !h.isSystem || h.versions.length > 1);
+  Object.keys(s.entries).length > 0 || s.goals.length > 0 || s.reviews.length > 0 || s.plannerItems.length > 0 || s.routines.length > 0 || s.focusSessions.length > 0 || s.habits.some((h) => !h.isSystem || h.versions.length > 1);
 
 /** Replace everything with a state loaded from the account (does not trigger a re-upload). */
 export function replaceState(raw: unknown) {
@@ -571,4 +577,68 @@ export function markOpeningSeen(date: string, slot: number) {
   const prevSlot = s.lastOpeningDate === date ? s.lastOpeningSlot : -1;
   if (prevSlot >= slot) return;
   commit({ ...s, lastOpeningDate: date, lastOpeningSlot: slot });
+}
+
+// ---------- Focus Hub (reference only) ----------
+type FocusLinks = Partial<Pick<FocusSession, "title" | "notes" | "goalId" | "projectId" | "milestoneId" | "plannerItemId">>;
+const patchSession = (id: string, f: (x: FocusSession) => FocusSession) => {
+  const s = getState();
+  commit({ ...s, focusSessions: s.focusSessions.map((x) => (x.id === id ? { ...f(x), updatedAt: now() } : x)) });
+};
+/** Returns the existing active session instead of creating a second one (double tap / retry safe). */
+export function startFocus(categoryId: string, links: FocusLinks = {}): string {
+  const s = getState();
+  const act = activeSession(s.focusSessions);
+  if (act) return act.id;
+  const t = now();
+  const x: FocusSession = { id: uid(), categoryId, title: "", notes: "", startedAt: t, endedAt: null, pauses: [], status: "RUNNING", durationSeconds: 0, goalId: null, projectId: null, milestoneId: null, plannerItemId: null, createdAt: t, updatedAt: t, ...links };
+  commit({ ...s, focusSessions: [x, ...s.focusSessions] });
+  return x.id;
+}
+export const pauseFocus = (id: string) => patchSession(id, (x) => (x.status !== "RUNNING" ? x : { ...x, status: "PAUSED", pauses: [...x.pauses, { start: now(), end: null }] }));
+export const resumeFocus = (id: string) => patchSession(id, (x) => (x.status !== "PAUSED" ? x : { ...x, status: "RUNNING", pauses: x.pauses.map((p) => (p.end ? p : { ...p, end: now() })) }));
+export function finishFocus(id: string, endAt?: string) {
+  patchSession(id, (x) => {
+    if (x.status !== "RUNNING" && x.status !== "PAUSED") return x;
+    const end = endAt ?? now();
+    const pauses = x.pauses.map((p) => (p.end ? p : { ...p, end }));
+    const done = { ...x, endedAt: end, pauses };
+    return { ...done, status: "COMPLETED", durationSeconds: sessionSeconds(done, Date.parse(end)) };
+  });
+}
+export const cancelFocus = (id: string) => patchSession(id, (x) => (x.status !== "RUNNING" && x.status !== "PAUSED" ? x : { ...x, status: "CANCELLED", endedAt: now(), pauses: x.pauses.map((p) => (p.end ? p : { ...p, end: now() })), durationSeconds: 0 }));
+export const updateFocusInfo = (id: string, links: FocusLinks & { categoryId?: string }) => patchSession(id, (x) => ({ ...x, ...links }));
+/** Edit times of a finished session; duration is always recomputed from timestamps. */
+export function editFocusTimes(id: string, startedAt: string, endedAt: string): boolean {
+  if (!(Date.parse(endedAt) > Date.parse(startedAt))) return false;
+  patchSession(id, (x) => {
+    const y = { ...x, startedAt, endedAt };
+    return { ...y, durationSeconds: sessionSeconds(y, Date.parse(endedAt)) };
+  });
+  return true;
+}
+export function deleteFocus(id: string) {
+  const s = getState();
+  commit({ ...s, focusSessions: s.focusSessions.filter((x) => x.id !== id) });
+}
+export function saveFocusCategory(c: Partial<FocusCategory> & { name: string }) {
+  const s = getState();
+  if (c.id && s.focusCategories.some((x) => x.id === c.id)) {
+    commit({ ...s, focusCategories: s.focusCategories.map((x) => (x.id === c.id ? { ...x, ...c, updatedAt: now() } : x)) });
+    return;
+  }
+  const t = now();
+  const cat: FocusCategory = { id: uid(), description: "", color: "#C99286", sortOrder: s.focusCategories.length, defaultTargetMinutes: null, activityId: null, goalId: null, projectId: null, isActive: true, archivedAt: null, createdAt: t, updatedAt: t, ...c };
+  commit({ ...s, focusCategories: [...s.focusCategories, cat] });
+}
+export function setFocusCategoryArchived(id: string, archived: boolean) {
+  saveFocusCategory({ ...getState().focusCategories.find((c) => c.id === id)!, isActive: !archived, archivedAt: archived ? now() : null });
+}
+export function moveFocusCategory(id: string, dir: -1 | 1) {
+  const s = getState();
+  const list = [...s.focusCategories].sort((a, b) => a.sortOrder - b.sortOrder);
+  const i = list.findIndex((c) => c.id === id), j = i + dir;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j]!, list[i]!];
+  commit({ ...s, focusCategories: list.map((c, k) => ({ ...c, sortOrder: k })) });
 }
