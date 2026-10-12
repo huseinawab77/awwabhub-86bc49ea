@@ -16,6 +16,7 @@ import { resolveCatState } from "@/lib/branding/catStates";
 import { AwwabLogo, useDynamicFavicon } from "@/components/branding/AwwabLogo";
 import { MobileNavigation } from "./MobileNavigation";
 import { DailyOpening } from "./DailyOpening";
+import { Notifier } from "./Notifier";
 
 /** Current state of the companion cat, from this week's Life Score (same number Home shows by default). */
 export function useCurrentCatState() {
@@ -102,6 +103,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       {user && <div className="fixed right-3 top-14 z-30 rounded-full bg-cream/90 px-3 py-1 md:top-3"><SyncBadge /></div>}
       {user && <MigrationDialog />}
+      {mounted && user && <Notifier />}
 
       <MobileNavigation />
     </div>
