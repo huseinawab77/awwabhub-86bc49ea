@@ -34,9 +34,17 @@ describe("calculation engine", () => {
     const m = periodFor("month", "2026-09-15");
     expect(activityPerformance(ACTIVITY_BY_ID["competition"], m, e("2026-09-03", "competition", { completed: true }), after).performance).toBe(50);
   });
-  it("daily threshold over the full week: 2 of 7 successful days", () => {
-    const x = merge(e("2026-09-07", "daily_steps", { value: 7000 }), e("2026-09-08", "daily_steps", { value: 5000 }), e("2026-09-09", "daily_steps", { value: 8000 }));
-    expect(activityPerformance(ACTIVITY_BY_ID["daily_steps"], week, x, after).performance).toBe(28.6);
+  it("daily threshold gives proportional, capped daily credit", () => {
+    const x = merge(e("2026-09-07", "daily_steps", { value: 7000 }), e("2026-09-08", "daily_steps", { value: 3000 }), e("2026-09-09", "daily_steps", { value: 8000 }));
+    // 1 + 0.5 + 1 = 2.5 of 7 days
+    expect(activityPerformance(ACTIVITY_BY_ID["daily_steps"], week, x, after).performance).toBe(35.7);
+  });
+  it("partial protein counts proportionally, no bonus for protein", () => {
+    const r = activityPerformance(ACTIVITY_BY_ID["protein"], week, e("2026-09-07", "protein", { value: 50 }), "2026-09-07");
+    expect(r.performance).toBe(41.7);
+    const over = activityPerformance(ACTIVITY_BY_ID["protein"], week, e("2026-09-07", "protein", { value: 200 }), "2026-09-07");
+    expect(over.performance).toBe(100);
+    expect(over.bonus).toBe(0);
   });
   it("deep work accumulates weekly", () => {
     const x = merge(...[100, 90, 120, 80].map((v, i) => e(`2026-09-${String(7 + i).padStart(2, "0")}`, "deep_work", { value: v })));
