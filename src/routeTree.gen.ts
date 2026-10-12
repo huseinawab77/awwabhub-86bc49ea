@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as DailyRouteImport } from './routes/daily'
+import { Route as FocusRouteImport } from './routes/focus'
 import { Route as GoalsRouteImport } from './routes/goals'
 import { Route as HomeRouteImport } from './routes/home'
 import { Route as InsightsRouteImport } from './routes/insights'
@@ -42,6 +43,11 @@ const CalendarRoute = CalendarRouteImport.update({
 const DailyRoute = DailyRouteImport.update({
   id: '/daily',
   path: '/daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FocusRoute = FocusRouteImport.update({
+  id: '/focus',
+  path: '/focus',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GoalsRoute = GoalsRouteImport.update({
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/daily': typeof DailyRoute
+  '/focus': typeof FocusRoute
   '/goals': typeof GoalsRoute
   '/home': typeof HomeRoute
   '/insights': typeof InsightsRoute
@@ -116,6 +123,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/daily': typeof DailyRoute
+  '/focus': typeof FocusRoute
   '/goals': typeof GoalsRoute
   '/home': typeof HomeRoute
   '/insights': typeof InsightsRoute
@@ -133,6 +141,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/calendar': typeof CalendarRoute
   '/daily': typeof DailyRoute
+  '/focus': typeof FocusRoute
   '/goals': typeof GoalsRoute
   '/home': typeof HomeRoute
   '/insights': typeof InsightsRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/daily'
+    | '/focus'
     | '/goals'
     | '/home'
     | '/insights'
@@ -167,6 +177,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/daily'
+    | '/focus'
     | '/goals'
     | '/home'
     | '/insights'
@@ -183,6 +194,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/calendar'
     | '/daily'
+    | '/focus'
     | '/goals'
     | '/home'
     | '/insights'
@@ -200,6 +212,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CalendarRoute: typeof CalendarRoute
   DailyRoute: typeof DailyRoute
+  FocusRoute: typeof FocusRoute
   GoalsRoute: typeof GoalsRoute
   HomeRoute: typeof HomeRoute
   InsightsRoute: typeof InsightsRoute
@@ -240,6 +253,13 @@ declare module '@tanstack/react-router' {
       path: '/daily'
       fullPath: '/daily'
       preLoaderRoute: typeof DailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/focus': {
+      id: '/focus'
+      path: '/focus'
+      fullPath: '/focus'
+      preLoaderRoute: typeof FocusRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/goals': {
@@ -320,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CalendarRoute: CalendarRoute,
   DailyRoute: DailyRoute,
+  FocusRoute: FocusRoute,
   GoalsRoute: GoalsRoute,
   HomeRoute: HomeRoute,
   InsightsRoute: InsightsRoute,
