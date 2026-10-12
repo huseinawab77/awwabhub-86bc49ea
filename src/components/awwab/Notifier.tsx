@@ -35,7 +35,7 @@ export function Notifier() {
         const mins = Math.floor(sessionSeconds(a, Date.now()) / 60);
         fireOnce(`focusstart|${a.id}`, id ? "Focus sedang berjalan" : "Focus timer running", (a.title || (id ? "Sesi fokus" : "Focus session")) + (cfg.focusMinutes ? ` · ${id ? "target" : "target"} ${cfg.focusMinutes}m` : ""), false);
         // Lightweight progress pop-up every 5 minutes (replaces previous via same tag).
-        if (mins > 0 && mins % 5 === 0 && Notification?.permission === "granted" && document.hidden) {
+        if (mins > 0 && mins % 5 === 0 && notifySupported() && Notification.permission === "granted" && document.hidden) {
           try { new Notification(id ? "Focus berjalan" : "Focus running", { body: `${mins} ${id ? "menit" : "min"}`, tag: `focus-progress|${a.id}`, icon: "/favicon.svg", silent: true }); } catch { /* */ }
         }
       }
